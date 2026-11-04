@@ -1,0 +1,27 @@
+# Download the bot's Go dependencies.
+deps:
+    cd kbot && go mod download
+
+# Build the bot binary.
+build:
+    mkdir -p bin
+    cd kbot && go build -trimpath -o ../bin/kbot .
+
+# Run offline tests with the race detector.
+test:
+    cd kbot && go test -race ./...
+
+# Run Go static analysis.
+vet:
+    cd kbot && go vet ./...
+
+# Format the bot's Go source.
+fmt:
+    cd kbot && go fmt ./...
+
+# Run tests, static analysis, and build.
+check: test vet build
+
+# Start the bot using TELE_TOKEN from the environment.
+start: build
+    ./bin/kbot start

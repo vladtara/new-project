@@ -1,100 +1,109 @@
-# new-project
+# kbot
 
-Practice repository for setting up Git with a `development` branch (PROM-42164).
+A Go Telegram bot using [Cobra](https://github.com/spf13/cobra) for its CLI and [Telebot v4](https://pkg.go.dev/gopkg.in/telebot.v4) for Telegram messages. Tasks use [Rune](https://github.com/rune-task-runner/rune), not Make.
 
-## Set up the repository yourself
+The bot is an independent Go module in `kbot/`. The existing `gohttps/` directory is unrelated and is not built by these tasks.
 
-These steps create a local repository, add a `development` branch, merge it into `main` and publish the result to GitHub.
+## Requirements
 
-If the repository already exists on GitHub, run `git clone <repository-url>` and `cd new-project` instead of steps 1 and 2.
+- Go 1.26.8 or newer, matching `kbot/go.mod`.
+- Rune. Install with `go install github.com/rune-task-runner/rune/cmd/rune@latest` and ensure your Go binary directory is on `PATH`.
+- A Telegram bot token from [BotFather](https://t.me/BotFather).
 
-1. Create the project directory and go into it:
+Telebot v4 is currently pinned to `v4.0.0-beta.10` in `kbot/go.mod`. The assignment's main requirement specifies v4, so this project does not use v3 from its older installation notes.
 
-   ```sh
-   mkdir new-project
-   cd new-project
+## Create and configure the bot
+
+1. Open BotFather in Telegram and send `/newbot`.
+2. Follow the prompts to choose a display name and a unique username ending in `_bot`.
+3. Store the resulting token in the environment. In Bash, this avoids recording it in shell history:
+
+   ```bash
+   read -rsp 'Telegram token: ' TELE_TOKEN; echo
+   export TELE_TOKEN
    ```
 
-2. Initialize a Git repository with `main` as the default branch:
+Do not commit or share the token. Revoke it through BotFather if exposed. The application reads the environment directly; it does not load `.env` files.
 
-   ```sh
-   git init -b main
-   ```
+Bot link template: `https://t.me/<your_chosen_name>_bot`.
+Replace this template with the actual BotFather username before submitting the assignment. No bot username or live token has been supplied for this repository.
 
-3. Create `README.md` with some initial text:
+Optionally send `/setcommands` to BotFather and configure:
 
-   ```sh
-   echo "# new-project" > README.md
-   ```
+```text
+start - Introduction
+help - Available commands
+version - Bot version
+```
 
-4. Stage the file for commit:
+## Install and run
 
-   ```sh
-   git add README.md
-   ```
+```sh
+git clone https://github.com/vladtara/new-project.git
+cd new-project
+rune deps
+rune check
+rune start
+```
 
-5. Commit it with the message `init`:
+`rune start` builds `bin/kbot` and starts long polling. Stop it with Ctrl+C or SIGTERM. Run only one polling instance per token. An existing Telegram webhook must be removed before using long polling.
 
-   ```sh
-   git commit -m "init"
-   ```
+The binary also works directly:
 
-6. Create the `development` branch and switch to it:
+```sh
+./bin/kbot --help
+./bin/kbot --version
+./bin/kbot start --poll-timeout=15s
+```
 
-   ```sh
-   git switch -c development
-   ```
+`TELE_TOKEN` is required only for `start`. The default polling timeout is 10 seconds; accepted values are greater than zero and at most one minute. The HTTP timeout is the polling timeout plus 10 seconds.
 
-   On Git older than 2.23, use `git checkout -b development`.
+Without Rune:
 
-7. Add your instructions to `README.md` in any editor, then stage the change:
+```sh
+cd kbot
+go test -race ./...
+go vet ./...
+go build -o ../bin/kbot .
+../bin/kbot start
+```
 
-   ```sh
-   git add README.md
-   ```
+## Telegram examples
 
-8. Commit using the Jira Smart Commit format, `<ISSUE-KEY> #<command> <text>`:
+- `/start`: introduction.
+- `/help`: available commands and supported messages.
+- `/version`: `kbot 0.1.0`.
+- `hello`, ignoring case and surrounding spaces: `Hello! How can I help you?`
+- Other text: echoes the original message as plain text.
+- Unknown slash command: suggests `/help`.
+- Photo, document, or sticker: acknowledges the received type without downloading it.
+- Video, audio, voice, video note, animation, location, or contact: explains that the type is unsupported.
 
-   ```sh
-   git commit -m "PROM-42164 #comment Add step-by-step setup instructions to README"
-   ```
+In groups, BotFather privacy settings control which messages Telegram delivers. Use a private chat for the initial smoke test.
 
-   The commands you can use:
+## Development
 
-   - `#comment <text>` adds a comment to the issue.
-   - `#time <value>` logs work time, for example `#time 1h 30m`.
-   - `#<transition>` moves the issue to a workflow status, for example `#done`.
+```sh
+rune --list
+rune fmt
+rune test
+rune vet
+rune build
+rune check
+```
 
-   Jira only processes Smart Commits when the repository is connected to Jira. See [Process issues with smart commits](https://support.atlassian.com/jira-software-cloud/docs/process-issues-with-smart-commits/#Smart-Commit-commands).
+Tests use an offline Telebot instance with a local HTTP test server. They exercise registered handlers and CLI validation without a Telegram token. A live end-to-end check still requires a real bot: start it, send `/start`, `hello`, a photo, and `/missing`, then check the replies.
 
-9. Switch back to `main` and merge `development` into it:
+Handler errors are logged without raw request details to avoid disclosing tokens or message content. The bot does not intentionally persist messages or media.
 
-   ```sh
-   git switch main
-   git merge --no-ff development
-   ```
+## Publish
 
-   `--no-ff` always creates a merge commit, so the history shows where the branch was merged.
+After completing the live smoke test and replacing the bot link template, commit the intended files and push your branch:
 
-10. Check that everything is committed and the history looks right:
+```sh
+git add README.md Runefile .gitignore kbot
+git commit -m "Add Telegram bot with Cobra, Telebot v4 and Rune tasks"
+git push -u origin HEAD
+```
 
-    ```sh
-    git status
-    git log --oneline --graph --all
-    ```
-
-    `git status` should say `nothing to commit, working tree clean`.
-
-11. Publish both branches to a public GitHub repository. With the GitHub CLI:
-
-    ```sh
-    gh repo create new-project --public --source=. --push
-    git push origin development
-    ```
-
-    Or, after creating an empty public repository on github.com:
-
-    ```sh
-    git remote add origin https://github.com/<your-user>/new-project.git
-    git push -u origin main development
-    ```
+Repository: https://github.com/vladtara/new-project
